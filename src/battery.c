@@ -4,7 +4,7 @@
 
 #define MIN_BATTERY 30
 #define MAX_ICON_PATH 100
-#define MAX_NOTIFY_TEXT 150
+#define MAX_NOTIFY_TEXT 200
 #define PROJECT_PATH ""
 
 /* Open File */
