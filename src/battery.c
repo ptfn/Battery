@@ -2,8 +2,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#define MIN_BATTERY 30
-#define MAX_ICON_PATH 100
+#define MIN_BATTERY     30
+#define MAX_ICON_PATH   100
+#define MAX_LEN_COMMAND 100
 #define MAX_NOTIFY_TEXT 200
 #define PROJECT_PATH ""
 
@@ -19,7 +20,7 @@ FILE *open(char *fname)
 }
 
 /* Call Notify */
-void notify(char *message, char *icon)
+void notify_command(char *message, char *icon)
 {
     char command[MAX_NOTIFY_TEXT] = "notify-send 'Battery' ";
     char *arg = " --icon='";
@@ -34,11 +35,54 @@ void notify(char *message, char *icon)
 void notification(char *notify_message, char *command_message,
                   char *icon, char *file_name, char command[])
 {
-    notify(notify_message, icon);
+    notify_command(notify_message, icon);
     strcat(command, command_message);
     strcat(command, file_name);
     system(command);
 }
+
+/* Print Percent Battery */
+void print(char *status, int perc)
+{
+    if (strcmp(status, "Charging\n") == 0) {
+        printf(" %d%%", perc);
+    } else if (strcmp(status, "Full\n") == 0) {
+        printf(" %d%%", perc);
+    } else {
+        if (perc >= 0 && perc <= 20) {
+            printf("  %d%%", perc);
+            system("systemctl suspend");
+        } else if (perc > 20 && perc <= 30) {
+            printf("  %d%%", perc);
+            system("brightnessctl set 25 > /dev/null");
+        } else if (perc > 30 && perc <= 65) {
+            printf("  %d%%", perc);
+        } else if (perc > 65 && perc <= 85) {
+            printf("  %d%%", perc);
+        } else {
+            printf("  %d%%", perc);
+        }
+    }
+}
+
+/* Condition Notifacation  */
+void condition(char *choice, char *status, char *charging, char *discharging,
+               char *low, char *name, int perc, char *command)
+{
+    if (strcmp(choice, status) != 0) {
+        if (strcmp(status, "Charging\n") == 0) {
+            notification("'Battery Charging!'", "echo Charging > ",
+                         charging, name, command);
+            system("brightnessctl set 102 > /dev/null");
+        } else if (strcmp(choice, "Low\n") != 0 && strcmp(status, "Discharging") == 0){
+            notification("'Battery Discharging!'", "echo Discharging > ",
+                         discharging, name, command);
+        }
+    } else if (strcmp(status, "Discharging") == 0 && perc <= MIN_BATTERY) {
+        notification("'Battery Low!'", "echo Low > ",
+                     low, name, command);
+    }
+} 
 
 int main()
 {
@@ -77,45 +121,15 @@ int main()
     fgets(status, 12, file_status);
     fgets(choice, 12, file_choice);
 
+    /* Print Percent */
     int bperc = atoi(percent);
+    print(status, bperc);
 
-    /* Pring Percent Battery */
-    if (strcmp(status, "Charging\n") == 0) {
-        printf(" %d%%", bperc);
-    } else if (strcmp(status, "Full\n") == 0) {
-        printf(" %d%%", bperc);
-    } else {
-        if (bperc >= 0 && bperc <= 20) {
-            printf(" %d%%", bperc);
-            system("systemctl suspend");
-        } else if (bperc > 20 && bperc <= 30) {
-            printf(" %d%%", bperc);
-            system("brightnessctl set 25 > /dev/null");
-        } else if (bperc > 30 && bperc <= 65) {
-            printf(" %d%%", bperc);
-        } else if (bperc > 65 && bperc <= 85) {
-            printf(" %d%%", bperc);
-        } else {
-            printf(" %d%%", bperc);
-        }
-    }
-
-    char command[100];
-
-    /* Notifacation  */
-    if (strcmp(choice, status) != 0) {
-        if (strcmp(status, "Charging\n") == 0) {
-            notification("'Battery Charging!'", "echo Charging > ",
-                         charging_icon, name_choice, command);
-        } else if (strcmp(choice, "Low\n") != 0 && strcmp(status, "Discharging") == 0){
-            notification("'Battery Discharging!'", "echo Discharging > ",
-                         discharging_icon, name_choice, command);
-        }
-    } else if (strcmp(status, "Discharging") == 0 && bperc <= MIN_BATTERY) {
-        notification("'Battery Low!'", "echo Low > ",
-                     low_icon, name_choice, command);
-    }
-
+    /* Notifacation */
+    char command[MAX_LEN_COMMAND];
+    condition(choice, status, charging_icon, discharging_icon,
+              low_icon, name_choice, bperc, command);
+    
     /* Close File */
     fclose(file_percent);
     fclose(file_status);
