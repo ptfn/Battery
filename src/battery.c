@@ -8,7 +8,7 @@
 #define MAX_LEN_COMMAND 200
 #define MAX_NOTIFY_TEXT 200
 
-static int min_battery_perc = 30;
+static int min_battery_perc = 20;
 static char project_path[1024];
 
 /* Open File */
