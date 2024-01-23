@@ -3,19 +3,28 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <wchar.h>
 
-#define MAX_LEN_PATH    1024
-#define MAX_LEN_COMMAND 200
-#define MAX_NOTIFY_TEXT 200
+typedef struct 
+{
+    FILE    *file;
+    int     perc;
+    char    new[5];
+} Light;
 
-static int min_battery_perc = 20;
-static char project_path[1024];
+#define MAX_LEN_PATH        1024
+#define MAX_LEN_COMMAND     200
+#define MAX_NOTIFY_TEXT     200
+
+const char *icon[] = {"", "", "", "", "", "", ""};
+const char *text[] = {"C", "F", "D", "D", "D", "D", "D"};
+static int min_battery_perc = 30;
 
 /* Open File */
-FILE *open(char *fname)
+FILE *open(char *fname, char *mode)
 {
     FILE *file;
-    if ((file = fopen(fname, "r")) == NULL) {
+    if ((file = fopen(fname, mode)) == NULL) {
         perror("Error occured while opening file");
         exit(EXIT_FAILURE);
     }
@@ -25,6 +34,7 @@ FILE *open(char *fname)
 /* Call Notify */
 void notify_command(char *message, char *icon)
 {
+    /* Notify library replace */
     char command[MAX_NOTIFY_TEXT] = "notify-send 'Battery' ";
     char *arg = " --icon='";
     strcat(command, message);
@@ -38,6 +48,7 @@ void notify_command(char *message, char *icon)
 void notification(char *notify_message, char *command_message,
                   char *icon, char *file_name, char command[])
 {
+    /* Notify library replace */
     notify_command(notify_message, icon);
     strcat(command, command_message);
     strcat(command, file_name);
@@ -45,25 +56,27 @@ void notification(char *notify_message, char *command_message,
 }
 
 /* Print Percent Battery */
-void print(char *status, int perc)
+void print(char *status, int perc, const char **icon, Light bright)
 {
     if (strcmp(status, "Charging\n") == 0) {
-        printf(" %d%%", perc);
+        printf
+            "%s %d%%", icon[0], perc);
     } else if (strcmp(status, "Full\n") == 0) {
-        printf(" %d%%", perc);
+        printf("%s %d%%", icon[1], perc);
     } else {
         if (perc >= 0 && perc <= 20) {
-            printf("  %d%%", perc);
+            printf("%s %d%%", icon[2], perc);
             system("systemctl suspend");
         } else if (perc > 20 && perc <= min_battery_perc) {
-            printf("  %d%%", perc);
-            system("brightnessctl set 25 > /dev/null");
-        } else if (perc > 30 && perc <= 65) {
-            printf("  %d%%", perc);
+            printf("%s %d%%", icon[3], perc);
+            sprintf(bright.new, "%d", bright.perc);
+            fputs(bright.new, bright.file);
+        } else if (perc > min_battery_perc && perc <= 65) {
+            printf("%s %d%%", icon[4], perc);
         } else if (perc > 65 && perc <= 85) {
-            printf("  %d%%", perc);
+            printf("%s %d%%", icon[5], perc);
         } else {
-            printf("  %d%%", perc);
+            printf("%s %d%%", icon[6], perc);
         }
     }
 }
@@ -112,12 +125,15 @@ void condition(char *choice, char *status, char *charging, char *discharging,
     }
 } 
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-    bool anotify, atime;
+    char project_path[1024];
+    bool anotify, atime, aicon;
     int c;
 
-    while ((c = getopt(argc, argv, "m:tnp:")) != -1) {
+    anotify = atime = aicon = false;
+
+    while ((c = getopt(argc, argv, "m:tnip:")) != -1) {
         switch (c) {
             case 'p':
                 sprintf(project_path, "%s", optarg);
@@ -134,56 +150,81 @@ int main(int argc, char *argv[])
             case 'm':
                 min_battery_perc = atoi(optarg);
                 break;
+
+            case 'i':
+                aicon = true;
+                break;
         }
     }
 
-    char *discharging_icon, *charging_icon, *low_icon, *name_choice;
+    
+    /* Init Variables */
+    char *discharging_icon, *charging_icon, *low_icon;
 
-    discharging_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
-    charging_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
-    low_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
-    name_choice = (char*)calloc(MAX_LEN_PATH, sizeof(char));
+    if (anotify) {
+        /* Alloc Icon */
+        discharging_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
+        charging_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
+        low_icon = (char*)calloc(MAX_LEN_PATH, sizeof(char));
 
-    /* Add Project_Path To Icon and Name */
-    strcat(discharging_icon, project_path);
-    strcat(charging_icon, project_path);
-    strcat(low_icon, project_path);
+        /* Add Project_Path To Icon and Name */
+        strcat(discharging_icon, project_path);
+        strcat(charging_icon, project_path);
+        strcat(low_icon, project_path);
+
+        /* Add Full Path */
+        strcat(discharging_icon, "/img/discharging.svg");
+        strcat(charging_icon, "/img/charging.svg");
+        strcat(low_icon, "/img/low.svg");
+    }
+
+    /* Init Stat File */
+    char *name_choice = (char*)calloc(MAX_LEN_PATH, sizeof(char));
     strcat(name_choice, project_path);
-
-    /* Add Full Path */
-    strcat(discharging_icon, "/img/discharging.svg");
-    strcat(charging_icon, "/img/charging.svg");
-    strcat(low_icon, "/img/low.svg");
-    strcat(name_choice, "/bat.txt");
-
+    strcat(name_choice, "/bat.txt"); // Create meself file
+    
+    /* Icon Battery */
+    
+    /* Name Files Battery */
     char *name_percent = "/sys/class/power_supply/BAT0/capacity";
     char *name_status = "/sys/class/power_supply/BAT0/status";   
     char *name_rate = "/sys/class/power_supply/BAT0/power_now";
     char *name_energy = "/sys/class/power_supply/BAT0/energy_now";
     char *name_full = "/sys/class/power_supply/BAT0/energy_full";
+    char *name_now = "/sys/class/backlight/intel_backlight/brightness";
+    char *name_max = "/sys/class/backlight/intel_backlight/max_brightness";
     
-    char percent[3], status[12], choice[12], rate[9], energy[9], full[9];
-    FILE *file_percent, *file_status, *file_choice, *file_rate, *file_energy, *file_full;
+    /* Init Variables For Files Battery */
+    char percent[4], status[12], choice[12], rate[9], energy[9], full[9], now[5], max[5];
+    FILE *file_percent, *file_status, *file_choice, *file_rate, *file_energy, *file_full, *file_now, *file_max;
 
     /* Open File */
-    file_percent = open(name_percent);
-    file_status = open(name_status);
-    file_choice = open(name_choice);
-    file_rate = open(name_rate);
-    file_energy = open(name_energy);
-    file_full = open(name_full);
+    file_percent = open(name_percent, "r");
+    file_status = open(name_status, "r");
+    file_choice = open(name_choice, "r");
+    file_rate = open(name_rate, "r");
+    file_energy = open(name_energy, "r");
+    file_full = open(name_full, "r");
+    file_now = open(name_now, "w+");
+    file_max = open(name_max, "r");
 
     /* Read File */
-    fgets(percent, 3, file_percent);
+    fgets(percent, 4, file_percent);
     fgets(status, 12, file_status);
     fgets(choice, 12, file_choice);
     fgets(rate, 9, file_rate);
     fgets(energy, 9, file_energy);
     fgets(full, 9, file_full);
+    fgets(now, 5 ,file_now);
+    fgets(max, 5, file_max);
 
     /* Print Percent */
     int bperc = atoi(percent);
-    print(status, bperc);
+    Light bright = {
+        .file = file_now,
+        .perc = (int)(atoi(max)/100*20)
+    };
+    print(status, bperc, aicon ? icon : text, bright);
 
     /* Time Battery */
     if (atime)
@@ -192,6 +233,7 @@ int main(int argc, char *argv[])
     /* Notifacation */
     char command[MAX_LEN_COMMAND];
 
+    /* Condition Notify */
     if (anotify)
         condition(choice, status, charging_icon, discharging_icon,
               low_icon, name_choice, bperc, command);
@@ -200,4 +242,9 @@ int main(int argc, char *argv[])
     fclose(file_percent);
     fclose(file_status);
     fclose(file_choice);
+    fclose(file_rate);
+    fclose(file_energy);
+    fclose(file_full);
+    fclose(file_now);
+    fclose(file_max);
 }
