@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
-#include <wchar.h>
 
 typedef struct 
 {
@@ -59,8 +58,7 @@ void notification(char *notify_message, char *command_message,
 void print(char *status, int perc, const char **icon, Light bright)
 {
     if (strcmp(status, "Charging\n") == 0) {
-        printf
-            "%s %d%%", icon[0], perc);
+        printf("%s %d%%", icon[0], perc);
     } else if (strcmp(status, "Full\n") == 0) {
         printf("%s %d%%", icon[1], perc);
     } else {
