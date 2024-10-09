@@ -4,16 +4,16 @@
 #include <string.h>
 #include <stdio.h>
 
+#define MAX_LEN_PATH        1024
+#define MAX_LEN_COMMAND     200
+#define MAX_NOTIFY_TEXT     200
+
 typedef struct 
 {
     FILE    *file;
     int     perc;
     char    new[5];
 } Light;
-
-#define MAX_LEN_PATH        1024
-#define MAX_LEN_COMMAND     200
-#define MAX_NOTIFY_TEXT     200
 
 const char *icon[] = {"", "", "", "", "", "", ""};
 const char *text[] = {"C", "F", "D", "D", "D", "D", "D"};
@@ -30,10 +30,9 @@ FILE *open(char *fname, char *mode)
     return file;
 }
 
-/* Call Notify */
+/* Call Notify 
 void notify_command(char *message, char *icon)
 {
-    /* Notify library replace */
     char command[MAX_NOTIFY_TEXT] = "notify-send 'Battery' ";
     char *arg = " --icon='";
     strcat(command, message);
@@ -41,18 +40,17 @@ void notify_command(char *message, char *icon)
     strcat(command, icon);
     strcat(command, "'");
     system(command);
-}
+}*/
 
-/* Create Notification */
+/* Create Notification
 void notification(char *notify_message, char *command_message,
                   char *icon, char *file_name, char command[])
 {
-    /* Notify library replace */
     notify_command(notify_message, icon);
     strcat(command, command_message);
     strcat(command, file_name);
     system(command);
-}
+}*/
 
 /* Print Percent Battery */
 void print(char *status, int perc, const char **icon, Light bright)
@@ -79,7 +77,7 @@ void print(char *status, int perc, const char **icon, Light bright)
     }
 }
 
-void clock (char *energy, char *rate, char* full, char *status)
+void clock(char *energy, char *rate, char* full, char *status)
 {
     int ienergy, irate, ifull, second, minute, hour;
     double all = 0;
